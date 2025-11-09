@@ -1,6 +1,5 @@
 import { AiModel, StudyGuide, DomainCheckResult } from '../types';
 
-// Interface for any AI model provider
 export interface ModelProvider {
     generateContent: (options: {
         prompt: string;
@@ -15,43 +14,38 @@ export interface ModelProvider {
     }) => Promise<T>;
 }
 
-// Configuration interface for model providers
 export interface ModelConfig {
     apiKey: string;
     baseUrl?: string;
     modelName?: string;
 }
 
-// Class to handle different model providers
 export class ModelService {
     private provider: ModelProvider;
 
     constructor(config: ModelConfig) {
-        // You can extend this to support different providers (OpenAI, Anthropic, etc.)
         this.provider = this.initializeProvider(config);
     }
 
-    private initializeProvider(config: ModelConfig): ModelProvider {
-        // Implement your chosen AI provider here
-        // This is just a placeholder - you'll need to implement the actual provider
+    private initializeProvider(_config: ModelConfig): ModelProvider {
         throw new Error("Please implement a specific AI provider");
     }
 
     private getModelPersona(modelType: AiModel, task: 'detection' | 'generation'): string {
-        const basePersona = "أنت مساعد تعليمي متخصص في طب الأسنان فقط. المصدر الوحيد للمعرفة هو النص المرفق. أي ادعاء علمي يجب أن يُسنَد باقتباس. اللغة الافتراضية هي العربية الفصحى بنبرة أكاديمية وودودة.";
+        const basePersona =
+            "You are an English-first dental education coach. Keep answers concise, cite evidence, and focus on exam-ready clarity.";
         
         if (task === 'detection') {
             return "You are an AI classifier. Your task is to identify the academic domain of a given text.";
         }
 
         if (modelType === AiModel.GPT5) {
-            return `${basePersona} أنت GPT-5، النموذج الأكثر تطوراً، وتحليلك يجب أن يكون فائق الدقة والعمق.`;
+            return `${basePersona} Assume GPT-5 level depth: add light coaching guidance where useful.`;
         }
         return basePersona;
     }
 
-    public async extractTextFromImage(imageData: string, mimeType: string): Promise<string> {
-        // Implement image-to-text using your chosen provider or a specialized OCR service
+    public async extractTextFromImage(_imageData: string, _mimeType: string): Promise<string> {
         throw new Error("Please implement image-to-text functionality");
     }
 
@@ -89,17 +83,17 @@ export class ModelService {
         const persona = this.getModelPersona(modelType, 'generation');
         const prompt = `${persona}
         
-        مهمتك هي تحليل المستند التالي بشكل كامل وإنشاء دليل دراسة شامل باللغة العربية. يجب أن تلتزم بالقواعد التالية بدقة:
-        1.  المصدر الوحيد للمعلومات هو النص المرفق. ممنوع استخدام معلومات خارجية.
-        2.  كل معلومة أو نقطة دراسية يجب أن تكون مدعومة باقتباس مباشر من النص مع رقم الصفحة (افترض أن النص يبدأ من الصفحة 1).
-        3.  المخرجات يجب أن تكون بصيغة JSON مطابقة تماماً للمخطط المحدد.
+        Your task is to analyze the document below and produce a complete study guide in English. Follow these rules:
+        1.  Use the provided text as your only source of truth.
+        2.  Every fact must include a citation with a page number (assume pagination starts at 1 when absent).
+        3.  Return valid JSON matching the schema exactly.
 
-        المستند:
+        Source document:
         ---
         ${fileContent}
         ---
         
-        قم بإنشاء دليل الدراسة الآن.`;
+        Respond with JSON only.`;
 
         const studyGuideSchema = {
             type: "object",
@@ -188,13 +182,11 @@ export class ModelService {
             }
         };
 
-        const result = await this.provider.generateStructuredContent<Omit<StudyGuide, 'originalContent'>>(
-            {
-                prompt,
-                schema: studyGuideSchema,
-                temperature: 0.3
-            }
-        );
+        const result = await this.provider.generateStructuredContent<Omit<StudyGuide, 'originalContent'>>({
+            prompt,
+            schema: studyGuideSchema,
+            temperature: 0.3
+        });
 
         return { ...result, originalContent: fileContent };
     }
