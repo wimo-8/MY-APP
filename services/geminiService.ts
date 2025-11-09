@@ -9,16 +9,15 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const model = ai.models;
 
 const getModelPersona = (modelType: AiModel, task: 'detection' | 'generation'): string => {
-    // The core persona is now fixed by the user spec.
-    // The modelType can add a flavor to it.
-    const basePersona = "أنت مساعد تعليمي متخصص في طب الأسنان فقط. المصدر الوحيد للمعرفة هو النص المرفق. أي ادعاء علمي يجب أن يُسنَد باقتباس. اللغة الافتراضية هي العربية الفصحى بنبرة أكاديمية وودودة.";
-    
+    const basePersona =
+        "You are an English-speaking dental education expert. You cite evidence whenever possible and focus on actionable guidance for students preparing for clinics or exams.";
+
     if (task === 'detection') {
         return "You are an AI classifier. Your task is to identify the academic domain of a given text.";
     }
 
     if (modelType === AiModel.GPT5) {
-        return `${basePersona} أنت GPT-5، النموذج الأكثر تطوراً، وتحليلك يجب أن يكون فائق الدقة والعمق.`;
+        return `${basePersona} Assume GPT-5 level reasoning: deliver concise coaching remarks and emphasize decision points.`;
     }
     return basePersona;
 };
@@ -40,7 +39,7 @@ const domainCheckSchema = {
 const studyGuideSchema = {
     type: Type.OBJECT,
     properties: {
-        quick_summary: { type: Type.STRING, description: "6-10 جمل تلخص المحتوى مع الإشارة للصفحات." },
+        quick_summary: { type: Type.STRING, description: "6-10 English sentences that summarize the entire document." },
         primary_study: {
             type: Type.ARRAY,
             items: {
@@ -123,7 +122,7 @@ const studyGuideSchema = {
         final_assessment: {
             type: Type.OBJECT,
             properties: {
-                items: { type: Type.ARRAY, items: { '$ref': '#/properties/micro_quizzes/items/properties/items/items' } }, // Re-use quiz item schema
+                items: { type: Type.ARRAY, items: { '$ref': '#/properties/micro_quizzes/items/properties/items/items' } },
                 time_suggestion_minutes: { type: Type.NUMBER },
             },
             required: ["items", "time_suggestion_minutes"]
@@ -132,19 +131,17 @@ const studyGuideSchema = {
     required: ["quick_summary", "primary_study", "secondary_study", "glossary", "concept_map", "micro_quizzes", "final_assessment"]
 };
 
-// FIX: Added missing extractTextFromImage function to process image-based files.
-export const extractTextFromImage = async (base64Data: string, mimeType: string, modelType: AiModel): Promise<string> => {
+export const extractTextFromImage = async (base64Data: string, mimeType: string, _modelType: AiModel): Promise<string> => {
     const imagePart = {
         inlineData: {
-            mimeType: mimeType,
+            mimeType,
             data: base64Data,
         },
     };
     const textPart = {
-        text: "Extract any and all text from this image. The image is likely a page from a dental textbook or document. Return only the extracted text.",
+        text: "Extract all legible text from this image. Return text only, no commentary.",
     };
 
-    // Note: modelType is not used here as gemini-2.5-flash is best for this specific multimodal task.
     const response = await model.generateContent({
         model: 'gemini-2.5-flash',
         contents: { parts: [imagePart, textPart] },
@@ -177,22 +174,21 @@ export const detectDomain = async (fileContent: string, modelType: AiModel): Pro
     return JSON.parse(result.text) as DomainCheckResult;
 };
 
-
 export const generateStudyGuide = async (fileContent: string, modelType: AiModel): Promise<StudyGuide> => {
     const persona = getModelPersona(modelType, 'generation');
     const prompt = `${persona}
     
-    مهمتك هي تحليل المستند التالي بشكل كامل وإنشاء دليل دراسة شامل باللغة العربية. يجب أن تلتزم بالقواعد التالية بدقة:
-    1.  المصدر الوحيد للمعلومات هو النص المرفق. ممنوع استخدام معلومات خارجية.
-    2.  كل معلومة أو نقطة دراسية يجب أن تكون مدعومة باقتباس مباشر من النص مع رقم الصفحة (افترض أن النص يبدأ من الصفحة 1).
-    3.  المخرجات يجب أن تكون بصيغة JSON مطابقة تماماً للمخطط المحدد.
+Your job is to deeply analyze the material below and craft a complete study guide in English. Strict rules:
+1. Use only the provided text as your knowledge source.
+2. Support every fact with a citation containing a page number (assume the document starts at page 1 when not given).
+3. Output must be valid JSON that matches the provided schema exactly.
 
-    المستند:
-    ---
-    ${fileContent}
-    ---
-    
-    قم بإنشاء دليل الدراسة الآن.`;
+Source material:
+---
+${fileContent}
+---
+
+Return JSON only.`;
 
     const result = await model.generateContent({
         model: 'gemini-2.5-pro',
