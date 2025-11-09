@@ -12,6 +12,40 @@ import SplashScreen from './components/SplashScreen';
 
 const LOCAL_STORAGE_KEY = 'dentalStudyAI_progress_v3';
 
+const STAGE_TIMELINE = [
+    {
+        id: AppState.FILE_UPLOAD,
+        label: 'رفع وتحضير المحتوى',
+        description: 'اختَر الملف المصدري أو الصورة التي سيتعامل معها الذكاء الاصطناعي.'
+    },
+    {
+        id: AppState.PROCESSING,
+        label: 'تحليل ذكي متعدد المراحل',
+        description: 'يتم تنظيف النص، كشف المجال الأكاديمي، ثم إعداد المخرجات.'
+    },
+    {
+        id: AppState.STUDY_TOPICS,
+        label: 'دليل دراسة غني',
+        description: 'تصفّح الملخصات، الخرائط المفاهيمية، والمصطلحات المتخصصة.'
+    },
+    {
+        id: AppState.QUIZ_IN_PROGRESS,
+        label: 'اختبارات تفاعلية',
+        description: 'عزز فهمك عبر امتحانات متدرجة الصعوبة وبطاقات شرح فورية.'
+    },
+    {
+        id: AppState.QUIZ_RESULTS,
+        label: 'قراءة النتائج',
+        description: 'اطّلع على دقة الإجابات وتوصيات المراجعة الموجهة.'
+    }
+] as const;
+
+const ONBOARDING_TIPS = [
+    'استخدم ملفات بصيغة PDF أو DOCX أو صور عالية الدقة للحصول على فهم أدق.',
+    'يمكنك تبديل نموذج الذكاء قبل الرفع لتجربة طبقات مختلفة من العمق.',
+    'أضف ملاحظاتك داخل الملف الأصلي؛ المحرك يلتقط العناوين والوسوم تلقائياً.'
+] as const;
+
 const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>(AppState.FILE_UPLOAD);
     const [studyGuide, setStudyGuide] = useState<StudyGuide | null>(null);
